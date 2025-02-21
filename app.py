@@ -1,99 +1,145 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+import tkinter as tk
+from tkinter import messagebox
 
-app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Needed for session management
+# Simulated data for demonstration purposes
+users_db = {"manager": "password123"}  # Username and password pairs
+team_members = {}  # Will hold the team with player names and match history
 
-# Dummy user for login
-users = {
-    'manager': 'password'
-}
+# Helper Functions
+def add_member_to_team(name):
+    if name in team_members:
+        return f"{name} is already in the team!"
+    team_members[name] = []
+    return f"{name} added to the team!"
 
-# In-memory storage for teams
-# Each team will have a unique ID, a name, and a list of players.
-# Each player is represented as a dict with a name and last 5 game results.
-teams = {}
-team_counter = 1  # Used to assign a unique ID to each new team
+def remove_member_from_team(name):
+    if name not in team_members:
+        return f"{name} is not in the team!"
+    del team_members[name]
+    return f"{name} removed from the team!"
 
-@app.route('/')
-def home():
-    # Redirect the user to the login page
-    return redirect(url_for('login'))
+def get_last_5_matches(name):
+    if name in team_members:
+        # Here, just mock some match results data
+        return team_members[name][:5]  # Return last 5 matches (or fewer if not enough)
+    return f"{name} not found in team."
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """
-    Login page:
-    - GET: Render the login form.
-    - POST: Validate the username and password.
-    """
-    error = None
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        # Check if the username exists and password matches
-        if username in users and users[username] == password:
-            session['user'] = username  # Store the user in session
-            return redirect(url_for('dashboard'))
+# Login Page
+def show_login_page():
+    login_window = tk.Tk()
+    login_window.title("Login Page")
+
+    # Label
+    login_label = tk.Label(login_window, text="Please Login", font=("Helvetica", 16))
+    login_label.pack(pady=10)
+
+    # Username and Password Inputs
+    username_label = tk.Label(login_window, text="Username:")
+    username_label.pack(pady=5)
+    username_entry = tk.Entry(login_window)
+    username_entry.pack(pady=5)
+
+    password_label = tk.Label(login_window, text="Password:")
+    password_label.pack(pady=5)
+    password_entry = tk.Entry(login_window, show="*")
+    password_entry.pack(pady=5)
+
+    # Login Button
+    def login_action():
+        username = username_entry.get()
+        password = password_entry.get()
+        if username in users_db and users_db[username] == password:
+            login_window.destroy()
+            show_team_management_page()
         else:
-            error = "Invalid credentials. Please try again."
-    return render_template('login.html', error=error)
+            messagebox.showerror("Login Failed", "Invalid username or password.")
 
-@app.route('/dashboard', methods=['GET', 'POST'])
-def dashboard():
-    """
-    Manager Dashboard:
-    - GET: Displays a form to create a new team and a list of existing teams.
-    - POST: Processes the new team creation.
-    
-    The form expects:
-      - team_name: The name of the team.
-      - players: A comma-separated list of player names.
-    
-    For demonstration, each player is automatically assigned dummy last 5 game results.
-    """
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    global team_counter
-    if request.method == 'POST':
-        team_name = request.form.get('team_name')
-        players = request.form.get('players')  # Expecting a comma-separated string
-        team_id = team_counter
-        team_counter += 1
-        
-        player_list = []
-        if players:
-            # Split player names by comma and strip extra whitespace
-            for p in players.split(','):
-                p = p.strip()
-                if p:
-                    # Here we simulate the player's last 5 games with a static list.
-                    # In a real application, these would be dynamically generated or stored.
-                    last_games = ["Win", "Loss", "Win", "Win", "Loss"]
-                    player_list.append({'name': p, 'last_games': last_games})
-        
-        teams[team_id] = {
-            'team_name': team_name,
-            'players': player_list
-        }
-        # After creating the team, redirect back to the dashboard.
-        return redirect(url_for('dashboard'))
-    
-    return render_template('dashboard.html', teams=teams)
+    login_button = tk.Button(login_window, text="Login", command=login_action)
+    login_button.pack(pady=20)
 
-@app.route('/team/<int:team_id>/review')
-def review_team(team_id):
-    """
-    Team Review Page:
-    - Displays the team name at the top.
-    - For each player in the team, it lists their last five game results.
-    """
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    team = teams.get(team_id)
-    if not team:
-        return "Team not found", 404
-    return render_template('team_review.html', team=team)
+    login_window.mainloop()
 
-if __name__ == '__main__':
-    # Run the app in debug mode (remove debug=True in production)
-    app.run(debug=True)
+# Team Management Page
+def show_team_management_page():
+    team_window = tk.Tk()
+    team_window.title("Team Management")
+
+    # Title label
+    title_label = tk.Label(team_window, text="Team Management", font=("Helvetica", 16))
+    title_label.pack(pady=10)
+
+    # Add and Remove Member Buttons
+    def add_member():
+        name = name_entry.get()
+        result = add_member_to_team(name)
+        messagebox.showinfo("Add Member", result)
+
+    def remove_member():
+        name = name_entry.get()
+        result = remove_member_from_team(name)
+        messagebox.showinfo("Remove Member", result)
+
+    # Name input for adding/removing members
+    name_label = tk.Label(team_window, text="Enter Player Name:")
+    name_label.pack(pady=5)
+    name_entry = tk.Entry(team_window)
+    name_entry.pack(pady=5)
+
+    # Add and Remove Buttons
+    add_button = tk.Button(team_window, text="Add Player", command=add_member)
+    add_button.pack(pady=5)
+
+    remove_button = tk.Button(team_window, text="Remove Player", command=remove_member)
+    remove_button.pack(pady=5)
+
+    # Show Team Button
+    def show_team():
+        team = "\n".join(team_members.keys()) if team_members else "No team members yet."
+        messagebox.showinfo("Team Members", team)
+
+    show_button = tk.Button(team_window, text="Show Team", command=show_team)
+    show_button.pack(pady=20)
+
+    # Go to Match Breakdown Page
+    def go_to_match_page():
+        team_window.destroy()
+        show_match_breakdown_page()
+
+    match_button = tk.Button(team_window, text="Go to Match Breakdown", command=go_to_match_page)
+    match_button.pack(pady=5)
+
+    team_window.mainloop()
+
+# Match Breakdown Page
+def show_match_breakdown_page():
+    match_window = tk.Tk()
+    match_window.title("Match Breakdown")
+
+    # Title Label
+    match_label = tk.Label(match_window, text="Match Breakdown", font=("Helvetica", 16))
+    match_label.pack(pady=10)
+
+    # Select a Player for Match Breakdown
+    def show_match_history():
+        player_name = player_name_entry.get()
+        matches = get_last_5_matches(player_name)
+        if isinstance(matches, list):
+            matches_text = "\n".join(matches) if matches else "No matches yet."
+        else:
+            matches_text = matches
+        messagebox.showinfo(f"{player_name} - Last 5 Matches", matches_text)
+
+    # Player name input for match breakdown
+    player_name_label = tk.Label(match_window, text="Enter Player Name:")
+    player_name_label.pack(pady=5)
+    player_name_entry = tk.Entry(match_window)
+    player_name_entry.pack(pady=5)
+
+    # Show Match Button
+    match_button = tk.Button(match_window, text="Show Last 5 Matches", command=show_match_history)
+    match_button.pack(pady=20)
+
+    match_window.mainloop()
+
+# Start the app
+show_login_page()
